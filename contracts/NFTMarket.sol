@@ -1,26 +1,20 @@
 // SPDX-License-Identifier: MIT
 pragma solidity ^0.8.4;
 
-import "hardhat/console.sol";
-
 import "@openzeppelin/contracts/utils/Counters.sol";
-import "@openzeppelin/contracts/token/ERC721/ERC721.sol";
 import "@openzeppelin/contracts/security/ReentrancyGuard.sol";
 import "./interface/IScore.sol";
+import "./interface/INFT.sol";
 
-/**
-TODO:
-    [ ] update score functions
-*/
 contract NFTMarket is ReentrancyGuard {
     using Counters for Counters.Counter;
 
-    address payable owner;
-    address payable score; // Score contract
+    address payable public owner;
+    address payable public score; // Score contract
 
-    uint256 buyingPoints = 100; // percentage of price to be alloted as the score
+    uint256 public buyingPoints = 100; // percentage of price to be alloted as the score
 
-    uint256 listingFee = 30; // 3% -> (30 / 1000)
+    uint256 public listingFee = 30; // 3% -> (30 / 1000)
 
     Counters.Counter private _currentId;
     struct Listing {
@@ -33,7 +27,9 @@ contract NFTMarket is ReentrancyGuard {
         bool sold;
         bool onSale;
     }
-    mapping(uint256 => Listing) private saleListings;
+
+    mapping(uint256 => Listing) public saleListings;
+    mapping(address => mapping(uint256 => uint256)) royalties;
 
     event TokenListed(
         uint256 indexed listingId,
@@ -74,10 +70,7 @@ contract NFTMarket is ReentrancyGuard {
         uint256 tokenId,
         uint256 price
     ) external nonReentrant {
-        require(
-            IERC721(nftContract).ownerOf(tokenId) == msg.sender,
-            "NOT_OWNER"
-        );
+        require(INFT(nftContract).ownerOf(tokenId) == msg.sender, "NOT_OWNER");
 
         _currentId.increment();
         uint256 current = _currentId.current();
@@ -92,7 +85,7 @@ contract NFTMarket is ReentrancyGuard {
             false,
             true
         );
-        IERC721(nftContract).transferFrom(msg.sender, address(this), tokenId);
+        INFT(nftContract).transferFrom(msg.sender, address(this), tokenId);
         IScore(score).updateScore(msg.sender, 1 ether);
 
         emit TokenListed(current, nftContract, tokenId, seller, price);
@@ -108,13 +101,31 @@ contract NFTMarket is ReentrancyGuard {
         uint256 tokenId = saleListings[listingId].tokenId;
         require(msg.value == price, "VALUE_NEQ_PRICE"); // check if amount sent is equal to the price of NFT
 
-        IERC721(nftContract).transferFrom(address(this), msg.sender, tokenId); // send NFT to buyer
+        INFT(nftContract).transferFrom(address(this), msg.sender, tokenId); // send NFT to buyer
+
         saleListings[listingId].owner = payable(msg.sender);
         saleListings[listingId].sold = true;
         saleListings[listingId].onSale = false;
 
         uint256 listingFeeAmount = (price * listingFee) / 1000;
-        saleListings[listingId].seller.transfer(msg.value - listingFeeAmount);
+        (address reciever, uint256 royalty) = INFT(nftContract).royaltyInfo(
+            tokenId,
+            price
+        );
+
+        // handle royalties
+        if (reciever == address(0)) {
+            saleListings[listingId].seller.transfer(
+                msg.value - listingFeeAmount
+            );
+        } else {
+            payable(reciever).transfer(royalty);
+            saleListings[listingId].seller.transfer(
+                msg.value - listingFeeAmount - royalty
+            );
+        }
+
+        // send the protocol fee
         payable(owner).transfer(listingFeeAmount / 2);
         payable(score).transfer(listingFeeAmount / 2);
 
@@ -146,7 +157,7 @@ contract NFTMarket is ReentrancyGuard {
 
         address payable seller = saleListings[listingId].seller;
         uint256 tokenId = saleListings[listingId].tokenId;
-        IERC721(nftContract).transferFrom(address(this), seller, tokenId);
+        INFT(nftContract).transferFrom(address(this), seller, tokenId);
 
         emit SaleCancelled(listingId, saleListings[listingId].nft, tokenId);
     }

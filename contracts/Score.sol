@@ -1,15 +1,9 @@
 // SPDX-License-Identifier: MIT
 pragma solidity ^0.8.4;
 
-import "hardhat/console.sol";
+// import "hardhat/console.sol";
 
 import "@openzeppelin/contracts/utils/Counters.sol";
-
-/**
-CHECKLIST
-[ ] INCREASE SCORE
-[ ] DISTRIBUTE REWARDS BASED ON SCORE
-*/
 
 contract Score {
     using Counters for Counters.Counter;
@@ -22,9 +16,9 @@ contract Score {
 
     /** STATE VARIABLES */
     // address of  the marketplace. This is the only address that can mutate the user's score.
-    address private market;
+    address public market;
 
-    mapping(address => ScoreDetails) private scores;
+    mapping(address => ScoreDetails) public scores;
 
     uint256 public lastUpdated = 0;
     uint256 public unitsCounted = 0 ether;
@@ -48,7 +42,7 @@ contract Score {
     // Increment the user's score by a specified amount. Can only be called by the marketplace.
     function updateScore(address user, uint256 changeBy) external onlyMarket {
         // Check if user is already present.
-        console.log("Current Score Balance: %s", address(this).balance);
+        // console.log("Current Score Balance: %s", address(this).balance);
         bool isUserPresent = false;
         uint256 total = totalUsers.current();
         for (uint256 i = 0; i < total; i++) {
@@ -74,9 +68,9 @@ contract Score {
         uint256 toReward = (address(this).balance - unitsCounted);
 
         require(toReward > 0, "Rewards to distribute is 0");
-        console.log("Updating reward");
-        console.log("To reward", toReward);
-        console.log("Total score", totalScore);
+        // console.log("Updating reward");
+        // console.log("To reward", toReward);
+        // console.log("Total score", totalScore);
 
         for (uint256 i = 0; i < totalUsers.current(); i++) {
             ScoreDetails storage current = scores[allUsers[i]];
