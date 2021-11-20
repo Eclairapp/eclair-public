@@ -170,6 +170,17 @@ contract NFTMarket is ReentrancyGuard {
         return saleListings[listingId];
     }
 
+    // Fetches all the listings
+    function getAllListings() public view returns (Listing[] memory) {
+        uint256 current = _currentId.current();
+        Listing[] memory listings = new Listing[](current);
+
+        for (uint256 i = 0; i < current; i++) {
+            listings[i] = saleListings[i + 1];
+        }
+        return listings;
+    }
+
     modifier onlyOwner() {
         require(msg.sender == owner);
         _;
