@@ -45,6 +45,11 @@ contract NFT is ERC721URIStorage, IERC2981 {
         _burn(_tokenId);
     }
 
+    // Check if token exists
+    function exists(uint256 _tokenId) external view returns (bool) {
+        return _exists(_tokenId);
+    }
+
     function royaltyInfo(uint256 _tokenId, uint256 _salePrice)
         external
         view
