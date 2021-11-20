@@ -35,6 +35,7 @@ contract Score {
         lastUpdated = block.timestamp;
     }
 
+    // To recieve $ETH
     receive() external payable {}
 
     /** FUNCTIONS */
